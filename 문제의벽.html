@@ -54,9 +54,9 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .card.shuffling { opacity:0; transform:scale(.88); }
 .card-bar { height:5px; flex-shrink:0; width:100%; }
 .card-inner { flex:1; padding:3px 5px; display:flex; flex-direction:column; gap:2px; min-height:0; overflow:hidden; }
-.card-top { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; gap:2px; flex-shrink:0; flex-wrap:nowrap; }
-.card-badge { font-size:.44rem; font-weight:800; padding:1px 3px; border-radius:6px; color:#fff; white-space:normal; word-break:keep-all; line-height:1.2; max-width:65%; flex-shrink:1; }
-.card-id { font-size:.62rem; font-weight:900; color:#222; font-family:"Consolas",monospace; flex-shrink:0; white-space:nowrap; }
+.card-top { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:2px; flex-shrink:0; }
+.card-badge { font-size:.42rem; font-weight:800; padding:1px 3px; border-radius:5px; color:#fff; white-space:pre; line-height:1.15; flex-shrink:0; }
+.card-id { font-size:.6rem; font-weight:900; color:#222; font-family:"Consolas",monospace; flex-shrink:0; white-space:nowrap; }
 .card-divider { height:1px; background:#e5e7eb; flex-shrink:0; margin:1px 0; }
 .card-q { flex:1; overflow:hidden; line-height:1.4; color:#1a1a1a; word-break:keep-all; }
 .c0{background:#2563eb;} .c1{background:#d97706;} .c2{background:#059669;}
@@ -243,8 +243,9 @@ function draw(grid, questions) {
   var wH = window.innerHeight - 44 - 10;
   var cW = Math.floor((wW-(cols-1)*4)/cols);
   var cH = Math.floor((wH-(rows-1)*4)/rows);
+  // 본문 가용 영역: bar5 + padding6 + top12 + divider3 + gap2 = 28px
   var qW = cW - 12;
-  var qH = cH - 29;
+  var qH = cH - 28;
   var frag = document.createDocumentFragment();
   for (var i = 0; i < questions.length; i++) {
     var q = questions[i];
@@ -253,6 +254,7 @@ function draw(grid, questions) {
     var fs = bestSize(lines, qW, qH);
     var ci = AREAS.indexOf(q.area);
     if (ci < 0) ci = 0;
+  var areaLabel = q.area === "핵심가치이해력" ? "핵심가치\n이해력" : q.area;
     var card = document.createElement("div");
     card.className = "card appear";
     card.style.animationDelay = Math.min(i*0.006, 0.2) + "s";
@@ -260,7 +262,7 @@ function draw(grid, questions) {
       '<div class="card-bar c'+ci+'"></div>'+
       '<div class="card-inner">'+
         '<div class="card-top">'+
-          '<div class="card-badge c'+ci+'">'+q.area+'</div>'+
+          '<div class="card-badge c'+ci+'">'+areaLabel+'</div>'+
           '<div class="card-id">'+q.id+'</div>'+
         '</div>'+
         '<div class="card-divider"></div>'+
