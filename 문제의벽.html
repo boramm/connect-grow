@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>문제의 벽 — Connect & Grow</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { width:100%; height:100%; overflow:hidden; background:#e8e8e8; font-family:"Segoe UI","Malgun Gothic",sans-serif; color:#111; }
+header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px; background:#1e1b2e; height:44px; gap:8px; flex-shrink:0; }
+.logo { font-size:1rem; font-weight:800; color:#a78bfa; }
+.badge { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; border-radius:20px; padding:2px 10px; font-size:0.7rem; font-weight:600; }
+.header-left { display:flex; align-items:center; gap:10px; }
+.header-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.timer-box { background:#2a1a4a; border:1px solid #6d28d9; border-radius:6px; padding:4px 10px; font-size:0.75rem; color:#c4b5fd; display:flex; align-items:center; gap:6px; }
+.timer-count { font-size:1rem; font-weight:800; color:#a78bfa; min-width:26px; text-align:center; }
+.btn { padding:4px 12px; border-radius:6px; border:none; font-size:0.72rem; font-weight:700; cursor:pointer; transition:opacity .15s; }
+.btn:hover { opacity:.85; }
+.btn-primary { background:#7c3aed; color:#fff; }
+.btn-secondary { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; }
+.btn-danger { background:#991b1b; color:#fff; }
+.btn-share { background:#0f766e; color:#99f6e4; border:1px solid #14b8a6; }
+.upload-label { padding:4px 12px; border-radius:6px; background:#065f46; color:#6ee7b7; border:1px solid #059669; font-size:0.72rem; font-weight:700; cursor:pointer; }
+#fileInput { display:none; }
+
+/* 공유 패널 */
+#sharePanel {
+  display:none; position:fixed; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:#1e1b2e; border:1px solid #4c35a0;
+  border-radius:12px; padding:20px 24px; z-index:500;
+  min-width:320px; max-width:500px; width:90%;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+#sharePanel h3 { color:#a78bfa; font-size:0.95rem; margin-bottom:12px; }
+#sharePanel p { color:#9ca3af; font-size:0.75rem; margin-bottom:8px; }
+#shareUrl {
+  width:100%; background:#0d0a1f; border:1px solid #4c35a0;
+  color:#c4b5fd; border-radius:6px; padding:8px 10px;
+  font-size:0.75rem; font-family:"Consolas",monospace;
+  resize:none; height:60px; margin-bottom:10px;
+}
+.share-btns { display:flex; gap:8px; }
+#shareOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:499; }
+
+#uploadGuide { display:flex; flex-direction:column; align-items:center; justify-content:center; height:calc(100vh - 44px); gap:14px; color:#555; }
+#uploadGuide .icon { font-size:3.5rem; }
+#uploadGuide h2 { font-size:1.2rem; }
+#uploadGuide p { font-size:0.85rem; text-align:center; color:#777; }
+#wall { display:none; width:100%; height:calc(100vh - 44px); padding:5px; }
+.card-grid { display:grid; width:100%; height:100%; gap:4px; }
+.card { background:#fff; border-radius:6px; overflow:hidden; display:flex; flex-direction:column; border:1px solid #ccc; box-shadow:0 1px 3px rgba(0,0,0,.12); transition:opacity .4s,transform .4s; }
+.card.shuffling { opacity:0; transform:scale(.88); }
+.card-bar { height:5px; flex-shrink:0; width:100%; }
+.card-inner { flex:1; padding:3px 5px; display:flex; flex-direction:column; gap:2px; min-height:0; overflow:hidden; }
+.card-top { display:flex; align-items:center; justify-content:space-between; gap:3px; flex-shrink:0; }
+.card-badge { font-size:.5rem; font-weight:800; padding:1px 4px; border-radius:8px; color:#fff; white-space:nowrap; }
+.card-id { font-size:.65rem; font-weight:900; color:#222; font-family:"Consolas",monospace; flex-shrink:0; }
+.card-divider { height:1px; background:#e5e7eb; flex-shrink:0; margin:1px 0; }
+.card-q { flex:1; overflow:hidden; line-height:1.4; color:#1a1a1a; word-break:keep-all; }
+.c0{background:#2563eb;} .c1{background:#d97706;} .c2{background:#059669;}
+.c3{background:#7c3aed;} .c4{background:#dc2626;} .c5{background:#db2777;} .c6{background:#0891b2;}
+@keyframes fadeIn { from{opacity:0;transform:scale(.9);} to{opacity:1;transform:scale(1);} }
+.card.appear { animation:fadeIn .3s ease forwards; }
+.progress-bar { position:fixed; bottom:0; left:0; height:3px; background:#7c3aed; transition:width 1s linear; z-index:200; }
+.toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%) translateY(60px); background:#4c1d95; color:#ede9fe; padding:8px 20px; border-radius:20px; font-size:.82rem; font-weight:700; border:1px solid #7c3aed; transition:transform .3s; z-index:300; white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo">🗺 문제의 벽</div>
+    <div class="badge" id="countBadge">0문항</div>
+  </div>
+  <div class="header-right">
+    <label class="upload-label" for="fileInput">📂 엑셀 업로드</label>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <div class="timer-box">🔀 <span class="timer-count" id="timerCount">60</span>초</div>
+    <button class="btn btn-primary" id="btnShuffle" style="display:none">지금 셔플</button>
+    <button class="btn btn-secondary" id="btnToggleTimer" style="display:none">타이머 정지</button>
+    <button class="btn btn-share" id="btnShare" style="display:none">🔗 링크 공유</button>
+  </div>
+</header>
+
+<div id="uploadGuide">
+  <div class="icon">📋</div>
+  <h2>엑셀 파일을 업로드하세요</h2>
+  <p>업로드하면 링크가 생성되어<br>다른 컴퓨터에서도 같은 화면을 볼 수 있어요</p>
+  <label class="upload-label" for="fileInput" style="font-size:.9rem;padding:10px 24px;margin-top:8px">📂 엑셀 파일 선택</label>
+</div>
+
+<div id="wall"><div class="card-grid" id="cardGrid"></div></div>
+<div class="progress-bar" id="progressBar" style="width:100%"></div>
+<div class="toast" id="toast">🔀 문제 위치가 바뀌었습니다!</div>
+
+<!-- 공유 패널 -->
+<div id="shareOverlay"></div>
+<div id="sharePanel">
+  <h3>🔗 링크로 공유하기</h3>
+  <p>아래 링크를 복사해서 다른 컴퓨터 브라우저에 붙여넣으세요.<br>문제 데이터가 링크 안에 포함되어 있어요.</p>
+  <textarea id="shareUrl" readonly></textarea>
+  <div class="share-btns">
+    <button class="btn btn-primary" id="btnCopyUrl">📋 링크 복사</button>
+    <button class="btn btn-secondary" id="btnCloseShare">닫기</button>
+  </div>
+</div>
+
+<script>
+var allQ = [];
+var timerInt = null;
+var running = false;
+var secs = 60;
+var INTERVAL = 60;
+var AREAS = ["공감력","표현력","업무이해력","협업역량","자기주도력","핵심가치이해력","학사이해력"];
+
+// ── URL에서 데이터 복원 ──
+function loadFromUrl() {
+  var hash = location.hash;
+  if (!hash || hash.length < 2) return false;
+  try {
+    var encoded = hash.slice(1);
+    var json = decodeURIComponent(atob(encoded));
+    var data = JSON.parse(json);
+    if (!Array.isArray(data) || data.length === 0) return false;
+    allQ = data;
+    document.getElementById("countBadge").textContent = allQ.length + "문항";
+    render(false);
+    showWall();
+    startTimer();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// ── 공유 링크 생성 ──
+function makeShareUrl() {
+  var json = JSON.stringify(allQ);
+  var encoded = btoa(encodeURIComponent(json));
+  return location.href.split("#")[0] + "#" + encoded;
+}
+
+document.getElementById("btnShare").addEventListener("click", function() {
+  var url = makeShareUrl();
+  document.getElementById("shareUrl").value = url;
+  document.getElementById("sharePanel").style.display = "block";
+  document.getElementById("shareOverlay").style.display = "block";
+});
+
+document.getElementById("btnCopyUrl").addEventListener("click", function() {
+  var ta = document.getElementById("shareUrl");
+  ta.select();
+  document.execCommand("copy");
+  this.textContent = "✅ 복사됨!";
+  var btn = this;
+  setTimeout(function(){ btn.textContent = "📋 링크 복사"; }, 1500);
+});
+
+document.getElementById("btnCloseShare").addEventListener("click", closeShare);
+document.getElementById("shareOverlay").addEventListener("click", closeShare);
+function closeShare() {
+  document.getElementById("sharePanel").style.display = "none";
+  document.getElementById("shareOverlay").style.display = "none";
+}
+
+// ── 엑셀 업로드 ──
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var wb = XLSX.read(ev.target.result, {type:"binary"});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1});
+    allQ = [];
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r[0] || !r[1]) continue;
+      allQ.push({id:String(r[0]), text:String(r[1]), area:String(r[4]||"")});
+    }
+    document.getElementById("countBadge").textContent = allQ.length + "문항";
+    // URL 해시 자동 업데이트
+    location.hash = btoa(encodeURIComponent(JSON.stringify(allQ)));
+    render(false);
+    showWall();
+    startTimer();
+  };
+  reader.readAsBinaryString(file);
+});
+
+function fmtQ(t) {
+  var s = t.replace(/\s*([A-D]\.\s)/g, "\n$1");
+  s = s.replace(/\s*([A-D]:\s)/g, "\n$1");
+  return s.trim();
+}
+
+function doShuffle(a) {
+  var b = a.slice();
+  for (var i = b.length-1; i > 0; i--) {
+    var j = Math.floor(Math.random()*(i+1));
+    var tmp = b[i]; b[i] = b[j]; b[j] = tmp;
+  }
+  return b;
+}
+
+function calcGrid(n) {
+  var W = window.innerWidth - 10;
+  var H = window.innerHeight - 44 - 10;
+  var bc = 1, bs = 999999;
+  for (var c = 1; c <= n; c++) {
+    var r = Math.ceil(n/c);
+    var s = Math.abs((W/c)/(H/r) - 1.55);
+    if (s < bs) { bs = s; bc = c; }
+  }
+  return {cols:bc, rows:Math.ceil(n/bc)};
+}
+
+var mCvs = document.createElement("canvas");
+var mCtx = mCvs.getContext("2d");
+
+function bestSize(lines, maxW, maxH) {
+  var face = "Malgun Gothic, Segoe UI, sans-serif";
+  for (var sz = 9; sz >= 5; sz -= 0.5) {
+    mCtx.font = sz + "px " + face;
+    var lh = sz * 1.4;
+    if (lines.length * lh > maxH) continue;
+    var ok = true;
+    for (var l = 0; l < lines.length; l++) {
+      if (mCtx.measureText(lines[l]).width > maxW) { ok = false; break; }
+    }
+    if (ok) return sz;
+  }
+  return 5;
+}
+
+function draw(grid, questions) {
+  var n = questions.length;
+  var g = calcGrid(n);
+  var cols = g.cols, rows = g.rows;
+  grid.style.gridTemplateColumns = "repeat("+cols+",1fr)";
+  grid.style.gridTemplateRows = "repeat("+rows+",1fr)";
+  grid.innerHTML = "";
+  var wW = window.innerWidth - 10;
+  var wH = window.innerHeight - 44 - 10;
+  var cW = Math.floor((wW-(cols-1)*4)/cols);
+  var cH = Math.floor((wH-(rows-1)*4)/rows);
+  var qW = cW - 12;
+  var qH = cH - 29;
+  var frag = document.createDocumentFragment();
+  for (var i = 0; i < questions.length; i++) {
+    var q = questions[i];
+    var fmt = fmtQ(q.text);
+    var lines = fmt.split("\n").filter(function(l){return l.trim();});
+    var fs = bestSize(lines, qW, qH);
+    var ci = AREAS.indexOf(q.area);
+    if (ci < 0) ci = 0;
+    var card = document.createElement("div");
+    card.className = "card appear";
+    card.style.animationDelay = Math.min(i*0.006, 0.2) + "s";
+    card.innerHTML =
+      '<div class="card-bar c'+ci+'"></div>'+
+      '<div class="card-inner">'+
+        '<div class="card-top">'+
+          '<div class="card-badge c'+ci+'">'+q.area+'</div>'+
+          '<div class="card-id">'+q.id+'</div>'+
+        '</div>'+
+        '<div class="card-divider"></div>'+
+        '<div class="card-q" style="font-size:'+fs+'px">'+lines.join("<br>")+'</div>'+
+      '</div>';
+    frag.appendChild(card);
+  }
+  grid.appendChild(frag);
+}
+
+function render(animate) {
+  var grid = document.getElementById("cardGrid");
+  var sh = doShuffle(allQ);
+  if (animate) {
+    var cards = document.querySelectorAll(".card");
+    for (var i=0;i<cards.length;i++) cards[i].classList.add("shuffling");
+    setTimeout(function(){ draw(grid,sh); }, 440);
+  } else {
+    draw(grid, sh);
+  }
+}
+
+function showWall() {
+  document.getElementById("uploadGuide").style.display = "none";
+  document.getElementById("wall").style.display = "block";
+  document.getElementById("btnShuffle").style.display = "inline-block";
+  document.getElementById("btnToggleTimer").style.display = "inline-block";
+  document.getElementById("btnShare").style.display = "inline-block";
+}
+
+function startTimer() {
+  if (timerInt) clearInterval(timerInt);
+  secs = INTERVAL; running = true;
+  updUI(); updBar();
+  timerInt = setInterval(function(){
+    if (!running) return;
+    secs--; updUI(); updBar();
+    if (secs <= 0) { go(); secs = INTERVAL; }
+  }, 1000);
+  document.getElementById("btnToggleTimer").textContent = "타이머 정지";
+}
+
+function updUI() { document.getElementById("timerCount").textContent = secs; }
+function updBar() { document.getElementById("progressBar").style.width = (secs/INTERVAL*100)+"%"; }
+
+function go() {
+  render(true);
+  var t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(function(){ t.classList.remove("show"); }, 2000);
+}
+
+document.getElementById("btnShuffle").addEventListener("click", function(){
+  go(); secs = INTERVAL; updBar();
+});
+document.getElementById("btnToggleTimer").addEventListener("click", function(){
+  running = !running;
+  this.textContent = running ? "타이머 정지" : "타이머 재개";
+  this.className = "btn " + (running ? "btn-secondary" : "btn-danger");
+});
+window.addEventListener("resize", function(){
+  if (allQ.length > 0) render(false);
+});
+
+// 페이지 로드 시 URL에서 복원 시도
+window.addEventListener("load", function(){
+  loadFromUrl();
+});
+</script>
+</body>
+</html>
