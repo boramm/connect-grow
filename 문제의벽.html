@@ -95,7 +95,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 <script>
 var allQ = [], page1 = [], page2 = [], curPage = 1;
 var timerInt = null, running = false, secs = 30, INTERVAL = 30;
-var COLS = 8, ROWS = 6, PER_PAGE = 42;
+var COLS = 6, ROWS = 7, PER_PAGE = 42;
 var AREAS = ["공감력","표현력","업무이해력","협업역량","자기주도력","핵심가치이해력","학사이해력"];
 
 // ── URL 공유 ──
@@ -175,7 +175,7 @@ function calcFontSize(lines, cardW, cardH) {
   if (FIXED_FS !== null) return FIXED_FS;
   var qH = cardH - 32;
   var lh = 1.25;
-  FIXED_FS = 16; // 16px 고정
+  FIXED_FS = 13; // 13px 고정
   return FIXED_FS;
 }
 
@@ -267,9 +267,10 @@ function updBar() { document.getElementById("progressBar").style.width = (secs/I
 
 function go() {
   var nextPage = (curPage === 1 && page2.length > 0) ? 2 : 1;
+  // 1페이지로 돌아올 때마다 전체 재셔플 → 어떤 문제가 각 페이지에 올지 매번 달라짐
   if (nextPage === 1) splitPages();
   var t = document.getElementById("toast");
-  t.textContent = nextPage === 1 ? "🔀 셔플 완료! 1페이지" : "▶ 2페이지로 이동";
+  t.textContent = nextPage === 2 ? "▶ 2페이지" : "🔀 재셔플 완료! 1페이지";
   t.classList.add("show");
   setTimeout(function(){ t.classList.remove("show"); }, 1800);
   renderPage(nextPage, "slide");
@@ -277,9 +278,13 @@ function go() {
 
 document.getElementById("btnNextPage").addEventListener("click", function(){
   var nextPage = (curPage === 1 && page2.length > 0) ? 2 : 1;
-  if (nextPage === 1) splitPages();
+  if (nextPage === 1) splitPages(); // 1페이지 돌아올 때 재셔플
   renderPage(nextPage, "slide");
   secs = INTERVAL; updBar();
+  var t = document.getElementById("toast");
+  t.textContent = nextPage === 2 ? "▶ 2페이지" : "🔀 재셔플! 1페이지";
+  t.classList.add("show");
+  setTimeout(function(){ t.classList.remove("show"); }, 1800);
 });
 document.getElementById("btnShuffle").addEventListener("click", function(){
   splitPages(); renderPage(1, "appear"); secs = INTERVAL; updBar();
