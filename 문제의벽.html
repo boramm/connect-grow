@@ -166,31 +166,16 @@ function getLines(text) {
   return lines;
 }
 
-// ── 폰트 크기 계산 (Canvas) ──
-var mCvs = document.createElement("canvas");
-var mCtx = mCvs.getContext("2d");
-
+// ── 폰트 크기: 전체 통일 고정값 ──
+// 카드 187x167, 본문 135px, 6줄 기준 18px
+var FIXED_FS = null;
 function calcFontSize(lines, cardW, cardH) {
-  // 가용 높이: bar6 + top16 + divider3 + pad7 = 32px
+  if (FIXED_FS !== null) return FIXED_FS;
   var qH = cardH - 32;
-  var qW = cardW - 12;
-  var n = lines.length;
   var lh = 1.25;
-
-  for (var sz = 18; sz >= 7; sz -= 0.5) {
-    // 높이 체크
-    if (n * sz * lh > qH) continue;
-    // 너비 체크 (Canvas 측정)
-    mCtx.font = "600 " + sz + "px Malgun Gothic, sans-serif";
-    var fits = true;
-    for (var l = 0; l < lines.length; l++) {
-      if (mCtx.measureText(lines[l]).width > qW * 1.8) { // 한글은 px당 실제보다 좁게 측정되므로 여유 줌
-        fits = false; break;
-      }
-    }
-    if (fits) return sz;
-  }
-  return 7;
+  var maxLines = 6; // 가장 긴 문제 기준
+  FIXED_FS = Math.floor(qH / (maxLines * lh));
+  return FIXED_FS;
 }
 
 // ── 그리드 ──
@@ -296,7 +281,7 @@ document.getElementById("btnToggleTimer").addEventListener("click", function(){
   this.textContent = running ? "타이머 정지" : "타이머 재개";
   this.className = "btn " + (running ? "btn-secondary" : "btn-danger");
 });
-window.addEventListener("resize", function(){ if (allQ.length) renderPage(curPage, "appear"); });
+window.addEventListener("resize", function(){ FIXED_FS = null; if (allQ.length) renderPage(curPage, "appear"); });
 window.addEventListener("load", function(){ loadFromUrl(); });
 </script>
 </body>
