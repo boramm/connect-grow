@@ -49,7 +49,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .card-badge { font-size:.52rem; font-weight:800; padding:1px 4px; border-radius:6px; color:#fff; white-space:pre; line-height:1.1; flex-shrink:0; }
 .card-id { font-size:.7rem; font-weight:900; color:#222; font-family:"Consolas",monospace; flex-shrink:0; white-space:nowrap; }
 .card-divider { height:1px; background:#e5e7eb; flex-shrink:0; margin:1px 0; }
-.card-q { flex:1; overflow:hidden; line-height:1.3; color:#1a1a1a; word-break:keep-all; }
+.card-q { flex:1; overflow:hidden; line-height:1.35; color:#1a1a1a; word-break:keep-all; overflow-wrap:break-word; }
 
 .c0{background:#2563eb;} .c1{background:#d97706;} .c2{background:#059669;}
 .c3{background:#7c3aed;} .c4{background:#dc2626;} .c5{background:#db2777;} .c6{background:#0891b2;}
@@ -199,24 +199,13 @@ function splitPages() {
   page2 = shuffled.slice(PER_PAGE);
 }
 
-var mCvs = document.createElement("canvas");
-var mCtx = mCvs.getContext("2d");
-
-function bestSize(lines, maxW, maxH) {
-  var face = "Malgun Gothic, Segoe UI, sans-serif";
-  var lh = 1.3;
+function bestSize(lines, maxH) {
+  var lh = 1.35;
   var n = lines.length;
-  var maxSz = n >= 5 ? 18 : n >= 4 ? 22 : n >= 3 ? 28 : 34;
-  for (var sz = maxSz; sz >= 7; sz -= 0.5) {
-    mCtx.font = sz + "px " + face;
-    if (n * sz * lh > maxH) continue;
-    var ok = true;
-    for (var l = 0; l < lines.length; l++) {
-      if (mCtx.measureText(lines[l]).width > maxW) { ok = false; break; }
-    }
-    if (ok) return sz;
-  }
-  return 7;
+  // 줄 수별 기본 폰트 (넘치는 건 CSS word-wrap 처리)
+  var maxSz = n >= 5 ? 13 : n >= 4 ? 16 : n >= 3 ? 20 : n >= 2 ? 24 : 28;
+  var fsByH = Math.floor(maxH / (n * lh));
+  return Math.min(maxSz, fsByH);
 }
 
 function drawCards(grid, questions, animate) {
@@ -224,7 +213,6 @@ function drawCards(grid, questions, animate) {
   var wH = window.innerHeight - 44 - 10;
   var cW = Math.floor((wW - (COLS-1)*4) / COLS);
   var cH = Math.floor((wH - (ROWS-1)*4) / ROWS);
-  var qW = cW - 10;
   var qH = cH - 26;
 
   grid.style.gridTemplateColumns = "repeat("+COLS+",1fr)";
@@ -236,7 +224,7 @@ function drawCards(grid, questions, animate) {
     var q = questions[i];
     var fmt = fmtQ(q.text);
     var lines = fmt.split("\n").filter(function(l){return l.trim();});
-    var fs = bestSize(lines, qW, qH);
+    var fs = bestSize(lines, qH);
     var ci = AREAS.indexOf(q.area);
     if (ci < 0) ci = 0;
     var areaLabel = q.area === "핵심가치이해력" ? "핵심가치\n이해력" : q.area;
