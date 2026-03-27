@@ -95,7 +95,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 <script>
 var allQ = [], page1 = [], page2 = [], curPage = 1;
 var timerInt = null, running = false, secs = 30, INTERVAL = 30;
-var COLS = 10, ROWS = 6, PER_PAGE = 42;
+var COLS = 10, ROWS = 5, PER_PAGE = 42;
 var AREAS = ["공감력","표현력","업무이해력","협업역량","자기주도력","핵심가치이해력","학사이해력"];
 
 // ── URL 공유 ──
@@ -175,7 +175,7 @@ function calcFontSize(lines, cardW, cardH) {
   if (FIXED_FS !== null) return FIXED_FS;
   var qH = cardH - 32;
   var lh = 1.25;
-  FIXED_FS = 15; // 15px 고정
+  FIXED_FS = 18; // 18px 고정 (10x5 기준)
   return FIXED_FS;
 }
 
