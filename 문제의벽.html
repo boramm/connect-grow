@@ -215,6 +215,18 @@ function drawCards(grid, questions, animClass) {
     var card = document.createElement("div");
     card.className = "card " + animClass;
     card.style.animationDelay = Math.min(i*0.004, 0.18) + "s";
+    // 객관식이면 문제(첫줄)와 보기(A~D) 분리
+    var isChoice = lines.length > 1 && /^[A-D][.:]/i.test(lines[1]);
+    var bodyHtml = '';
+    if (isChoice) {
+      var qLine = lines[0];
+      var opts = lines.slice(1);
+      bodyHtml =
+        '<span style="font-size:'+fs+'px;line-height:1.3">'+qLine+'</span><br>' +
+        '<span style="font-size:11px;line-height:1.3">'+opts.join('<br>')+'</span>';
+    } else {
+      bodyHtml = '<span style="font-size:'+fs+'px;line-height:1.3">'+lines.join('<br>')+'</span>';
+    }
     card.innerHTML =
       '<div class="card-bar c'+ci+'"></div>'+
       '<div class="card-inner">'+
@@ -223,9 +235,7 @@ function drawCards(grid, questions, animClass) {
           '<div class="card-id">'+q.id+'</div>'+
         '</div>'+
         '<div class="card-divider"></div>'+
-        '<div class="card-q" style="font-size:'+fs+'px;line-height:1.25">'+
-          lines.join('<br>')+
-        '</div>'+
+        '<div class="card-q">'+bodyHtml+'</div>'+
       '</div>';
     frag.appendChild(card);
   }
