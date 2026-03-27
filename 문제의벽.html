@@ -20,6 +20,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .btn-primary { background:#7c3aed; color:#fff; }
 .btn-secondary { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; }
 .btn-danger { background:#991b1b; color:#fff; }
+.btn-page { background:#1e3a5f; color:#93c5fd; border:1px solid #3b82f6; }
 .btn-share { background:#0f766e; color:#99f6e4; border:1px solid #14b8a6; }
 .upload-label { padding:4px 12px; border-radius:6px; background:#065f46; color:#6ee7b7; border:1px solid #059669; font-size:.72rem; font-weight:700; cursor:pointer; }
 #fileInput { display:none; }
@@ -68,6 +69,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
     <div class="timer-box">🔀 <span class="timer-count" id="timerCount">30</span>초</div>
     <button class="btn btn-primary" id="btnShuffle" style="display:none">지금 셔플</button>
     <button class="btn btn-secondary" id="btnToggleTimer" style="display:none">타이머 정지</button>
+    <button class="btn btn-page" id="btnNextPage" style="display:none">▶ 다음 페이지</button>
     <button class="btn btn-share" id="btnShare" style="display:none">🔗 링크 공유</button>
   </div>
 </header>
@@ -93,7 +95,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 <script>
 var allQ = [], page1 = [], page2 = [], curPage = 1;
 var timerInt = null, running = false, secs = 30, INTERVAL = 30;
-var COLS = 10, ROWS = 6, PER_PAGE = 60;
+var COLS = 10, ROWS = 6, PER_PAGE = 42;
 var AREAS = ["공감력","표현력","업무이해력","협업역량","자기주도력","핵심가치이해력","학사이해력"];
 
 // ── URL 공유 ──
@@ -173,8 +175,7 @@ function calcFontSize(lines, cardW, cardH) {
   if (FIXED_FS !== null) return FIXED_FS;
   var qH = cardH - 32;
   var lh = 1.25;
-  var maxLines = 6; // 가장 긴 문제 기준
-  FIXED_FS = Math.floor(qH / (maxLines * lh));
+  FIXED_FS = 15; // 15px 고정
   return FIXED_FS;
 }
 
@@ -246,6 +247,7 @@ function showWall() {
   document.getElementById("pageBadge").style.display = "inline-block";
   document.getElementById("btnShuffle").style.display = "inline-block";
   document.getElementById("btnToggleTimer").style.display = "inline-block";
+  document.getElementById("btnNextPage").style.display = "inline-block";
   document.getElementById("btnShare").style.display = "inline-block";
 }
 
@@ -273,6 +275,12 @@ function go() {
   renderPage(nextPage, "slide");
 }
 
+document.getElementById("btnNextPage").addEventListener("click", function(){
+  var nextPage = (curPage === 1 && page2.length > 0) ? 2 : 1;
+  if (nextPage === 1) splitPages();
+  renderPage(nextPage, "slide");
+  secs = INTERVAL; updBar();
+});
 document.getElementById("btnShuffle").addEventListener("click", function(){
   splitPages(); renderPage(1, "appear"); secs = INTERVAL; updBar();
 });
