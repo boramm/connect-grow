@@ -221,20 +221,36 @@ function drawCards(grid, questions, animClass) {
     if (isChoice) {
       var qLine = lines[0];
       var opts = lines.slice(1);
+      // 보기 최장 길이 기준으로 옵션 폰트 자동 결정
+      var maxOptLen = 0;
+      for (var oi = 0; oi < opts.length; oi++) {
+        if (opts[oi].length > maxOptLen) maxOptLen = opts[oi].length;
+      }
+      // 2열 배치 기준: 카드 절반 너비에 들어가는 폰트
+      // 15자 이하→10px, 20자 이하→9px, 25자 이하→8px, 그 이상→7px
+      var optFs = maxOptLen <= 15 ? 10 : maxOptLen <= 20 ? 9 : maxOptLen <= 25 ? 8 : 7;
+      // 문제 줄도 길면 폰트 줄이기
+      var qFs = qLine.length <= 20 ? fs : qLine.length <= 30 ? fs - 1 : qLine.length <= 50 ? fs - 2 : fs - 3;
       // 보기를 2열 테이블로
       var optHtml = '<table style="width:100%;border-collapse:collapse;margin-top:2px">';
       for (var oi = 0; oi < opts.length; oi += 2) {
         optHtml += '<tr>';
-        optHtml += '<td style="width:50%;font-size:10px;line-height:1.3;padding:0 2px 1px 0;vertical-align:top">' + (opts[oi]||'') + '</td>';
-        optHtml += '<td style="width:50%;font-size:10px;line-height:1.3;padding:0 0 1px 2px;vertical-align:top">' + (opts[oi+1]||'') + '</td>';
+        optHtml += '<td style="width:50%;font-size:'+optFs+'px;line-height:1.25;padding:0 2px 1px 0;vertical-align:top">' + (opts[oi]||'') + '</td>';
+        optHtml += '<td style="width:50%;font-size:'+optFs+'px;line-height:1.25;padding:0 0 1px 2px;vertical-align:top">' + (opts[oi+1]||'') + '</td>';
         optHtml += '</tr>';
       }
       optHtml += '</table>';
       bodyHtml =
-        '<span style="font-size:'+fs+'px;line-height:1.3">'+qLine+'</span>' +
+        '<span style="font-size:'+qFs+'px;line-height:1.3">'+qLine+'</span>' +
         optHtml;
     } else {
-      bodyHtml = '<span style="font-size:'+fs+'px;line-height:1.3">'+lines.join('<br>')+'</span>';
+      // 주관식도 줄이 길면 폰트 줄이기
+      var maxLen = 0;
+      for (var li = 0; li < lines.length; li++) {
+        if (lines[li].length > maxLen) maxLen = lines[li].length;
+      }
+      var adjFs = maxLen <= 30 ? fs : maxLen <= 50 ? fs - 1 : maxLen <= 70 ? fs - 2 : fs - 3;
+      bodyHtml = '<span style="font-size:'+adjFs+'px;line-height:1.3">'+lines.join('<br>')+'</span>';
     }
     card.innerHTML =
       '<div class="card-bar c'+ci+'"></div>'+
