@@ -302,9 +302,14 @@ function updBar() { document.getElementById("progressBar").style.width = (secs/I
 
 function go() {
   var next = (curPage + 1) % TOTAL_PAGES;
-  if (next === 0) splitPages(); // 한 바퀴 돌면 재셔플
   var t = document.getElementById("toast");
-  t.textContent = next === 0 ? "🔀 재셔플! 1페이지" : "▶ " + (next+1) + "페이지";
+  if (next === 0) {
+    // 3페이지 다 돌고 나서 재셔플 후 1페이지
+    splitPages();
+    t.textContent = "🔀 재셔플! 1페이지";
+  } else {
+    t.textContent = "▶ " + (next+1) + "페이지";
+  }
   t.classList.add("show");
   setTimeout(function(){ t.classList.remove("show"); }, 1800);
   renderPage(next, "slide");
@@ -315,6 +320,10 @@ document.getElementById("btnNextPage").addEventListener("click", function(){
   if (next === 0) splitPages();
   renderPage(next, "slide");
   secs = INTERVAL; updBar();
+  var t = document.getElementById("toast");
+  t.textContent = next === 0 ? "🔀 재셔플! 1페이지" : "▶ " + (next+1) + "페이지";
+  t.classList.add("show");
+  setTimeout(function(){ t.classList.remove("show"); }, 1800);
 });
 document.getElementById("btnShuffle").addEventListener("click", function(){
   splitPages(); renderPage(0, "appear"); secs = INTERVAL; updBar();
