@@ -11,12 +11,13 @@ html,body { width:100%; height:100%; overflow:hidden; background:#e8e8e8; font-f
 header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px; background:#1e1b2e; height:44px; gap:8px; flex-shrink:0; }
 .logo { font-size:1rem; font-weight:800; color:#a78bfa; }
 .badge { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; border-radius:20px; padding:2px 10px; font-size:.7rem; font-weight:600; }
-.page-badge { background:#3d2a7a; color:#e9d5ff; border:1px solid #6d28d9; border-radius:20px; padding:2px 10px; font-size:.7rem; font-weight:700; }
+.page-badge { background:#3d2a7a; color:#e9d5ff; border:1px solid #6d28d9; border-radius:20px; padding:2px 10px; font-size:.7rem; font-weight:700; min-width:80px; text-align:center; }
 .header-left { display:flex; align-items:center; gap:10px; }
 .header-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .timer-box { background:#2a1a4a; border:1px solid #6d28d9; border-radius:6px; padding:4px 10px; font-size:.75rem; color:#c4b5fd; display:flex; align-items:center; gap:6px; }
 .timer-count { font-size:1rem; font-weight:800; color:#a78bfa; min-width:26px; text-align:center; }
-.btn { padding:4px 12px; border-radius:6px; border:none; font-size:.72rem; font-weight:700; cursor:pointer; }
+.btn { padding:4px 12px; border-radius:6px; border:none; font-size:.72rem; font-weight:700; cursor:pointer; transition:opacity .15s; }
+.btn:hover { opacity:.85; }
 .btn-primary { background:#7c3aed; color:#fff; }
 .btn-secondary { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; }
 .btn-danger { background:#991b1b; color:#fff; }
@@ -44,7 +45,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .card-badge { font-size:.42rem; font-weight:800; padding:1px 3px; border-radius:5px; color:#fff; white-space:pre; line-height:1.1; flex-shrink:0; }
 .card-id { font-size:.65rem; font-weight:900; color:#222; font-family:"Consolas",monospace; flex-shrink:0; }
 .card-divider { height:1px; background:#e5e7eb; flex-shrink:0; margin-bottom:2px; }
-.card-q { flex:1; overflow:hidden; color:#1a1a1a; word-break:keep-all; }
+.card-q { flex:1; overflow:hidden; color:#1a1a1a; }
 .c0{background:#2563eb;} .c1{background:#d97706;} .c2{background:#059669;}
 .c3{background:#7c3aed;} .c4{background:#dc2626;} .c5{background:#db2777;} .c6{background:#0891b2;}
 @keyframes fadeIn { from{opacity:0;transform:scale(.92);} to{opacity:1;transform:scale(1);} }
@@ -61,7 +62,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
   <div class="header-left">
     <div class="logo">🗺 문제의 벽</div>
     <div class="badge" id="countBadge">0문항</div>
-    <div class="page-badge" id="pageBadge" style="display:none">1 / 2 페이지</div>
+    <div class="page-badge" id="pageBadge" style="display:none">1 / 3 페이지</div>
   </div>
   <div class="header-right">
     <label class="upload-label" for="fileInput">📂 엑셀 업로드</label>
@@ -76,7 +77,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 <div id="uploadGuide">
   <div class="icon">📋</div>
   <h2>엑셀 파일을 업로드하세요</h2>
-  <p>84개 문제가 2페이지로 나뉘어 표시되고<br>30초마다 자동으로 셔플 + 페이지 전환됩니다</p>
+  <p>문제가 3페이지로 나뉘어 표시되고<br>30초마다 자동으로 페이지 전환됩니다</p>
   <label class="upload-label" for="fileInput" style="font-size:.9rem;padding:10px 24px;margin-top:8px">📂 엑셀 파일 선택</label>
 </div>
 <div id="wall"><div class="card-grid" id="cardGrid"></div></div>
@@ -93,10 +94,10 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
   </div>
 </div>
 <script>
-var allQ = [], page1 = [], page2 = [], curPage = 1;
+var allQ = [], pages = [], curPage = 0;
 var timerInt = null, running = false, secs = 30, INTERVAL = 30;
-var COLS = 6, ROWS = 7, PER_PAGE = 42;
 var AREAS = ["공감력","표현력","업무이해력","협업역량","자기주도력","핵심가치이해력","학사이해력"];
+var TOTAL_PAGES = 3;
 
 // ── URL 공유 ──
 function loadFromUrl() {
@@ -105,8 +106,7 @@ function loadFromUrl() {
     var data = JSON.parse(decodeURIComponent(atob(location.hash.slice(1))));
     if (!Array.isArray(data) || !data.length) return false;
     allQ = data;
-    init();
-    return true;
+    init(); return true;
   } catch(e) { return false; }
 }
 function makeShareUrl() {
@@ -151,35 +151,59 @@ document.getElementById("fileInput").addEventListener("change", function(e) {
 function init() {
   document.getElementById("countBadge").textContent = allQ.length + "문항";
   splitPages();
-  renderPage(1, false);
+  renderPage(0, false);
   showWall();
   startTimer();
 }
 
 // ── 텍스트 처리 ──
 function getLines(text) {
-  // 줄바꿈이 이미 있으면 그대로, 없으면 객관식 분리
-  var lines = text.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
-  if (lines.length === 1) {
-    // 한 줄인 경우만 객관식 분리 시도
+  // 줄바꿈 있으면 그대로, 없으면 객관식 분리
+  var raw = text.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
+  if (raw.length === 1) {
     var s = text.replace(/\s+([A-D][.:]\s)/g, "\n$1").replace(/([^\n])([A-D][.:]\s)/g, "$1\n$2").trim();
-    lines = s.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
+    raw = s.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
   }
-  return lines;
+  return raw;
 }
 
-// ── 폰트 크기: 전체 통일 고정값 ──
-// 카드 187x167, 본문 135px, 6줄 기준 18px
-var FIXED_FS = null;
-function calcFontSize(lines, cardW, cardH) {
-  if (FIXED_FS !== null) return FIXED_FS;
-  var qH = cardH - 32;
-  var lh = 1.25;
-  FIXED_FS = 13; // 13px 고정
-  return FIXED_FS;
+// ── 카드 HTML 생성 ──
+function makeCardBody(lines) {
+  // 객관식 감지
+  var optIdx = -1;
+  for (var i = 0; i < lines.length; i++) {
+    if (/^[A-D][.:]\s/.test(lines[i])) { optIdx = i; break; }
+  }
+
+  if (optIdx > 0) {
+    var qLines = lines.slice(0, optIdx);
+    var opts = lines.slice(optIdx);
+    var maxQ = 0;
+    for (var i = 0; i < qLines.length; i++) if (qLines[i].length > maxQ) maxQ = qLines[i].length;
+    var maxO = 0;
+    for (var i = 0; i < opts.length; i++) if (opts[i].length > maxO) maxO = opts[i].length;
+
+    var qFs = maxQ <= 15 ? 13 : maxQ <= 25 ? 12 : maxQ <= 40 ? 11 : 10;
+    var oFs = maxO <= 12 ? 11 : maxO <= 18 ? 10 : maxO <= 24 ? 9 : maxO <= 30 ? 8 : 7;
+
+    var tbl = '<table style="width:100%;border-collapse:collapse;margin-top:1px">';
+    for (var i = 0; i < opts.length; i += 2) {
+      tbl += '<tr>';
+      tbl += '<td style="width:50%;font-size:'+oFs+'px;line-height:1.2;padding:0 2px 1px 0;vertical-align:top;word-break:keep-all">'+(opts[i]||'')+'</td>';
+      tbl += '<td style="width:50%;font-size:'+oFs+'px;line-height:1.2;padding:0 0 1px 2px;vertical-align:top;word-break:keep-all">'+(opts[i+1]||'')+'</td>';
+      tbl += '</tr>';
+    }
+    tbl += '</table>';
+    return '<div style="font-size:'+qFs+'px;line-height:1.3;word-break:keep-all">'+qLines.join('<br>')+'</div>'+tbl;
+  } else {
+    var maxL = 0;
+    for (var i = 0; i < lines.length; i++) if (lines[i].length > maxL) maxL = lines[i].length;
+    var fs = maxL <= 20 ? 13 : maxL <= 35 ? 12 : maxL <= 55 ? 11 : maxL <= 75 ? 10 : 9;
+    return '<div style="font-size:'+fs+'px;line-height:1.3;word-break:keep-all">'+lines.join('<br>')+'</div>';
+  }
 }
 
-// ── 그리드 ──
+// ── 셔플 & 페이지 분할 ──
 function doShuffle(a) {
   var b = a.slice();
   for (var i = b.length-1; i > 0; i--) {
@@ -190,83 +214,45 @@ function doShuffle(a) {
 }
 function splitPages() {
   var sh = doShuffle(allQ);
-  page1 = sh.slice(0, PER_PAGE);
-  page2 = sh.slice(PER_PAGE);
+  var n = allQ.length;
+  var perPage = Math.ceil(n / TOTAL_PAGES);
+  pages = [];
+  for (var p = 0; p < TOTAL_PAGES; p++) {
+    pages.push(sh.slice(p * perPage, (p+1) * perPage));
+  }
 }
 
+// ── 그리드 계산 ──
+function calcGrid(n) {
+  var W = window.innerWidth - 10;
+  var H = window.innerHeight - 44 - 10;
+  var bestCols = 1, bestScore = 999;
+  for (var c = 1; c <= n; c++) {
+    var r = Math.ceil(n / c);
+    var cW = W / c, cH = H / r;
+    var score = Math.abs(cW/cH - 1.7);
+    if (score < bestScore) { bestScore = score; bestCols = c; }
+  }
+  return { cols: bestCols, rows: Math.ceil(n / bestCols) };
+}
+
+// ── 렌더링 ──
 function drawCards(grid, questions, animClass) {
-  var wW = window.innerWidth - 10;
-  var wH = window.innerHeight - 44 - 10;
-  var cW = Math.floor((wW - (COLS-1)*4) / COLS);
-  var cH = Math.floor((wH - (ROWS-1)*4) / ROWS);
-
-  grid.style.gridTemplateColumns = "repeat("+COLS+",1fr)";
-  grid.style.gridTemplateRows = "repeat("+ROWS+",1fr)";
+  var n = questions.length;
+  var g = calcGrid(n);
+  var cols = g.cols, rows = g.rows;
+  grid.style.gridTemplateColumns = "repeat("+cols+",1fr)";
+  grid.style.gridTemplateRows = "repeat("+rows+",1fr)";
   grid.innerHTML = "";
-
   var frag = document.createDocumentFragment();
   for (var i = 0; i < questions.length; i++) {
     var q = questions[i];
     var lines = getLines(q.text);
-    var fs = calcFontSize(lines, cW, cH);
     var ci = AREAS.indexOf(q.area); if (ci < 0) ci = 0;
     var areaLabel = q.area === "핵심가치이해력" ? "핵심가치\n이해력" : q.area;
-
     var card = document.createElement("div");
     card.className = "card " + animClass;
-    card.style.animationDelay = Math.min(i*0.004, 0.18) + "s";
-    // 객관식 감지: 어느 줄이든 A. B. C. D. 있으면 객관식
-    var optStartIdx = -1;
-    for (var li = 0; li < lines.length; li++) {
-      if (/^[A-D][.:]\s/.test(lines[li])) { optStartIdx = li; break; }
-    }
-    var isChoice = optStartIdx > 0;
-    var bodyHtml = '';
-
-    if (isChoice) {
-      // 문제 부분 (A 이전 줄들)
-      var qLines = lines.slice(0, optStartIdx);
-      var opts   = lines.slice(optStartIdx);
-
-      // 문제 최장 줄
-      var maxQLen = 0;
-      for (var li = 0; li < qLines.length; li++) {
-        if (qLines[li].length > maxQLen) maxQLen = qLines[li].length;
-      }
-      // 보기 최장 줄
-      var maxOptLen = 0;
-      for (var oi = 0; oi < opts.length; oi++) {
-        if (opts[oi].length > maxOptLen) maxOptLen = opts[oi].length;
-      }
-
-      // 문제 폰트: 길이 기준
-      var qFs = maxQLen <= 15 ? fs : maxQLen <= 25 ? fs-1 : maxQLen <= 40 ? fs-2 : fs-3;
-      // 보기 폰트: 2열 기준 (절반 너비에 들어가야 함)
-      var optFs = maxOptLen <= 12 ? 11 : maxOptLen <= 18 ? 10 : maxOptLen <= 24 ? 9 : maxOptLen <= 30 ? 8 : 7;
-
-      // 보기 2열 테이블
-      var optHtml = '<table style="width:100%;border-collapse:collapse;margin-top:1px">';
-      for (var oi = 0; oi < opts.length; oi += 2) {
-        optHtml += '<tr>';
-        optHtml += '<td style="width:50%;font-size:'+optFs+'px;line-height:1.2;padding:0 2px 1px 0;vertical-align:top;word-break:keep-all">'+(opts[oi]||'')+'</td>';
-        optHtml += '<td style="width:50%;font-size:'+optFs+'px;line-height:1.2;padding:0 0 1px 2px;vertical-align:top;word-break:keep-all">'+(opts[oi+1]||'')+'</td>';
-        optHtml += '</tr>';
-      }
-      optHtml += '</table>';
-
-      bodyHtml =
-        '<div style="font-size:'+qFs+'px;line-height:1.3;word-break:keep-all">'+qLines.join('<br>')+'</div>' +
-        optHtml;
-
-    } else {
-      // 주관식: 최장 줄 길이 기준 폰트 조정 + word-break
-      var maxLen = 0;
-      for (var li = 0; li < lines.length; li++) {
-        if (lines[li].length > maxLen) maxLen = lines[li].length;
-      }
-      var adjFs = maxLen <= 20 ? fs : maxLen <= 35 ? fs-1 : maxLen <= 55 ? fs-2 : fs-3;
-      bodyHtml = '<div style="font-size:'+adjFs+'px;line-height:1.3;word-break:keep-all">'+lines.join('<br>')+'</div>';
-    }
+    card.style.animationDelay = Math.min(i*0.004, 0.15) + "s";
     card.innerHTML =
       '<div class="card-bar c'+ci+'"></div>'+
       '<div class="card-inner">'+
@@ -275,7 +261,7 @@ function drawCards(grid, questions, animClass) {
           '<div class="card-id">'+q.id+'</div>'+
         '</div>'+
         '<div class="card-divider"></div>'+
-        '<div class="card-q">'+bodyHtml+'</div>'+
+        '<div class="card-q">'+makeCardBody(lines)+'</div>'+
       '</div>';
     frag.appendChild(card);
   }
@@ -285,9 +271,8 @@ function drawCards(grid, questions, animClass) {
 function renderPage(pg, animClass) {
   curPage = pg;
   var grid = document.getElementById("cardGrid");
-  var questions = pg === 1 ? page1 : page2;
-  var total = page2.length > 0 ? 2 : 1;
-  document.getElementById("pageBadge").textContent = pg + " / " + total + " 페이지";
+  var questions = pages[pg] || [];
+  document.getElementById("pageBadge").textContent = (pg+1) + " / " + TOTAL_PAGES + " 페이지";
   drawCards(grid, questions, animClass || "appear");
 }
 
@@ -316,35 +301,30 @@ function updUI() { document.getElementById("timerCount").textContent = secs; }
 function updBar() { document.getElementById("progressBar").style.width = (secs/INTERVAL*100)+"%"; }
 
 function go() {
-  var nextPage = (curPage === 1 && page2.length > 0) ? 2 : 1;
-  // 1페이지로 돌아올 때마다 전체 재셔플 → 어떤 문제가 각 페이지에 올지 매번 달라짐
-  if (nextPage === 1) splitPages();
+  var next = (curPage + 1) % TOTAL_PAGES;
+  if (next === 0) splitPages(); // 한 바퀴 돌면 재셔플
   var t = document.getElementById("toast");
-  t.textContent = nextPage === 2 ? "▶ 2페이지" : "🔀 재셔플 완료! 1페이지";
+  t.textContent = next === 0 ? "🔀 재셔플! 1페이지" : "▶ " + (next+1) + "페이지";
   t.classList.add("show");
   setTimeout(function(){ t.classList.remove("show"); }, 1800);
-  renderPage(nextPage, "slide");
+  renderPage(next, "slide");
 }
 
 document.getElementById("btnNextPage").addEventListener("click", function(){
-  var nextPage = (curPage === 1 && page2.length > 0) ? 2 : 1;
-  if (nextPage === 1) splitPages(); // 1페이지 돌아올 때 재셔플
-  renderPage(nextPage, "slide");
+  var next = (curPage + 1) % TOTAL_PAGES;
+  if (next === 0) splitPages();
+  renderPage(next, "slide");
   secs = INTERVAL; updBar();
-  var t = document.getElementById("toast");
-  t.textContent = nextPage === 2 ? "▶ 2페이지" : "🔀 재셔플! 1페이지";
-  t.classList.add("show");
-  setTimeout(function(){ t.classList.remove("show"); }, 1800);
 });
 document.getElementById("btnShuffle").addEventListener("click", function(){
-  splitPages(); renderPage(1, "appear"); secs = INTERVAL; updBar();
+  splitPages(); renderPage(0, "appear"); secs = INTERVAL; updBar();
 });
 document.getElementById("btnToggleTimer").addEventListener("click", function(){
   running = !running;
   this.textContent = running ? "타이머 정지" : "타이머 재개";
   this.className = "btn " + (running ? "btn-secondary" : "btn-danger");
 });
-window.addEventListener("resize", function(){ FIXED_FS = null; if (allQ.length) renderPage(curPage, "appear"); });
+window.addEventListener("resize", function(){ if (allQ.length) renderPage(curPage, "appear"); });
 window.addEventListener("load", function(){ loadFromUrl(); });
 </script>
 </body>
