@@ -466,8 +466,7 @@ function bgmLoop(startTime, dest) {
 }
 
 function playBGM() {
-  initAudio();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  // audioCtx는 클릭 핸들러에서 이미 생성됨
   bgmPlaying = true;
   masterGain = audioCtx.createGain();
   masterGain.gain.value = 0.4;
@@ -487,16 +486,25 @@ function stopBGM() {
 }
 
 document.getElementById("btnMusic").addEventListener("click", function() {
+  var btn = this;
   if (bgmPlaying) {
     stopBGM();
-    this.textContent = "🔇 BGM 켜기";
-    this.style.color = "#f59e0b";
-    this.style.borderColor = "#f59e0b";
+    btn.textContent = "🔇 BGM 켜기";
+    btn.style.color = "#f59e0b";
+    btn.style.borderColor = "#f59e0b";
   } else {
-    playBGM();
-    this.textContent = "🎵 BGM 끄기";
-    this.style.color = "#34d399";
-    this.style.borderColor = "#34d399";
+    // AudioContext는 반드시 클릭 이벤트 안에서 생성/재개
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().then(function() { playBGM(); });
+    } else {
+      playBGM();
+    }
+    btn.textContent = "🎵 BGM 끄기";
+    btn.style.color = "#34d399";
+    btn.style.borderColor = "#34d399";
   }
 });
 
