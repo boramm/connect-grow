@@ -349,6 +349,196 @@ document.getElementById("btnToggleTimer").addEventListener("click", function(){
 });
 window.addEventListener("resize", function(){ if (allQ.length) renderPage(curPage, "appear"); });
 window.addEventListener("load", function(){ loadFromUrl(); });
+// ── BGM (Web Audio API) ──
+var audioCtx = null, bgmPlaying = false, bgmLoopTimer = null;
+var masterGain = null;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function note(freq, start, dur, type, vol, dest) {
+  var o = audioCtx.createOscillator();
+  var g = audioCtx.createGain();
+  o.type = type || 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g); g.connect(dest);
+  o.start(start); o.stop(start + dur + 0.05);
+}
+
+function noise(start, dur, vol, freq, dest) {
+  var buf = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  var src = audioCtx.createBufferSource();
+  var flt = audioCtx.createBiquadFilter();
+  var g = audioCtx.createGain();
+  src.buffer = buf;
+  flt.type = freq > 2000 ? 'highpass' : 'bandpass';
+  flt.frequency.value = freq;
+  g.gain.setValueAtTime(vol, start);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  src.connect(flt); flt.connect(g); g.connect(dest);
+  src.start(start);
+}
+
+function kick(t, dest) {
+  var o = audioCtx.createOscillator();
+  var g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+  g.gain.setValueAtTime(1.0, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  o.connect(g); g.connect(dest);
+  o.start(t); o.stop(t + 0.3);
+}
+
+function scheduleMeasures(startTime, dest) {
+  var bpm = 138;
+  var b = 60 / bpm; // 1비트
+  var s = b / 2;    // 8분음표
+  // 베이스라인 음계 (긴박한 007 느낌)
+  var bassLine = [
+    {f:110,l:s},{f:110,l:s},{f:116.5,l:s},{f:110,l:s},
+    {f:130.8,l:s},{f:110,l:s},{f:116.5,l:s},{f:123.5,l:s},
+    {f:110,l:s},{f:110,l:s},{f:116.5,l:s},{f:110,l:s},
+    {f:146.8,l:s},{f:138.6,l:s},{f:130.8,l:s},{f:123.5,l:s}
+  ];
+  // 멜로디 (스파이 스타일)
+  var mel = [
+    {f:440,l:b*1.5},{f:0,l:b*0.5},{f:440,l:s},{f:523.2,l:s},
+    {f:493.9,l:b},{f:0,l:b},{f:349.2,l:b},{f:392,l:b},
+    {f:440,l:b*2},{f:0,l:b*2},
+    {f:392,l:b},{f:349.2,l:b},{f:329.6,l:b},{f:293.7,l:b}
+  ];
+
+  var measures = 2; // 2마디씩
+  var totalBeats = measures * 4;
+
+  for (var rep = 0; rep < measures; rep++) {
+    var mStart = startTime + rep * 4 * b;
+
+    // 킥 패턴: 1,3박
+    for (var beat = 0; beat < 4; beat++) {
+      var t = mStart + beat * b;
+      if (beat % 2 === 0) kick(t, dest);
+      // 스네어: 2,4박
+      if (beat % 2 === 1) noise(t, 0.12, 0.5, 1200, dest);
+      // 하이햇: 8분음표마다
+      noise(t, 0.04, 0.3, 9000, dest);
+      noise(t + s, 0.04, 0.2, 9000, dest);
+    }
+
+    // 베이스라인
+    var bt = mStart;
+    for (var i = 0; i < bassLine.length; i++) {
+      if (bassLine[i].f > 0) {
+        note(bassLine[i].f, bt, bassLine[i].l * 0.9, 'sawtooth', 0.35, dest);
+      }
+      bt += bassLine[i].l;
+    }
+  }
+
+  // 멜로디 (첫 번째 마디만)
+  var mt = startTime;
+  for (var i = 0; i < mel.length; i++) {
+    if (mel[i].f > 0) {
+      note(mel[i].f, mt, mel[i].l * 0.8, 'triangle', 0.18, dest);
+      note(mel[i].f * 2, mt, mel[i].l * 0.8, 'triangle', 0.06, dest); // 옥타브
+    }
+    mt += mel[i].l;
+  }
+
+  return totalBeats * b; // 총 길이 반환
+}
+
+function bgmLoop(startTime, dest) {
+  if (!bgmPlaying) return;
+  var len = scheduleMeasures(startTime, dest);
+  bgmLoopTimer = setTimeout(function() {
+    if (bgmPlaying) bgmLoop(startTime + len, dest);
+  }, (len - 0.1) * 1000);
+}
+
+function playBGM() {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  bgmPlaying = true;
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.4;
+  masterGain.connect(audioCtx.destination);
+  bgmLoop(audioCtx.currentTime, masterGain);
+}
+
+function stopBGM() {
+  bgmPlaying = false;
+  if (bgmLoopTimer) clearTimeout(bgmLoopTimer);
+  if (masterGain) {
+    masterGain.gain.setValueAtTime(masterGain.gain.value, audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+    setTimeout(function(){ try { masterGain.disconnect(); } catch(e){} }, 400);
+    masterGain = null;
+  }
+}
+
+document.getElementById("btnMusic").addEventListener("click", function() {
+  if (bgmPlaying) {
+    stopBGM();
+    this.textContent = "🔇 BGM 켜기";
+    this.style.color = "#f59e0b";
+    this.style.borderColor = "#f59e0b";
+  } else {
+    playBGM();
+    this.textContent = "🎵 BGM 끄기";
+    this.style.color = "#34d399";
+    this.style.borderColor = "#34d399";
+  }
+});
+
+// ── 드라마틱 셔플 애니메이션 ──
+function dramaticRender(pg) {
+  var grid = document.getElementById("cardGrid");
+  var cards = grid.querySelectorAll(".card");
+  var dirs = [
+    "translate(-150%,-150%) rotate(-15deg)",
+    "translate(150%,-150%) rotate(15deg)",
+    "translate(-150%,150%) rotate(10deg)",
+    "translate(150%,150%) rotate(-10deg)",
+    "translate(-200%,0) rotate(-20deg)",
+    "translate(200%,0) rotate(20deg)",
+    "translate(0,-200%) rotate(5deg)",
+    "translate(0,200%) rotate(-5deg)"
+  ];
+  // 카드 흩뿌리기
+  cards.forEach(function(card, i) {
+    var dir = dirs[i % dirs.length];
+    card.style.transition = "transform 0.32s cubic-bezier(0.4,0,1,1), opacity 0.32s ease";
+    card.style.transform = dir;
+    card.style.opacity = "0";
+  });
+  // 새 페이지 렌더
+  setTimeout(function() {
+    renderPage(pg, "flip");
+  }, 340);
+}
+
+// go() 오버라이드 — 드라마틱 애니메이션 적용
+var _go = go;
+go = function() {
+  var next = (curPage + 1) % TOTAL_PAGES;
+  if (next === 0) splitPages();
+  var t = document.getElementById("toast");
+  t.textContent = next === 0 ? "\uD83D\uDD00 \uC7AC\uC154\ud50C! 1\ud398\uc774\uc9c0" : "\u25B6 " + (next+1) + "\ud398\uc774\uc9c0";
+  t.classList.add("show");
+  setTimeout(function(){ t.classList.remove("show"); }, 1800);
+  dramaticRender(next);
+};
+
 </script>
 </body>
 </html>
