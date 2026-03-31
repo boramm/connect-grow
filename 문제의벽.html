@@ -22,6 +22,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .btn-secondary { background:#2d1f5e; color:#c4b5fd; border:1px solid #4c35a0; }
 .btn-danger { background:#991b1b; color:#fff; }
 .btn-page { background:#1e3a5f; color:#93c5fd; border:1px solid #3b82f6; }
+.btn-music { background:#1a1a2e; color:#f59e0b; border:1px solid #f59e0b; }
 .btn-share { background:#0f766e; color:#99f6e4; border:1px solid #14b8a6; }
 .upload-label { padding:4px 12px; border-radius:6px; background:#065f46; color:#6ee7b7; border:1px solid #059669; font-size:.72rem; font-weight:700; cursor:pointer; }
 #fileInput { display:none; }
@@ -52,6 +53,17 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
 .card.appear { animation:fadeIn .3s ease forwards; }
 @keyframes slideIn { from{opacity:0;transform:translateX(20px);} to{opacity:1;transform:translateX(0);} }
 .card.slide { animation:slideIn .35s ease forwards; }
+@keyframes flipIn {
+  0%   { opacity:0; transform:rotateY(90deg) scale(0.8); }
+  60%  { opacity:1; transform:rotateY(-10deg) scale(1.02); }
+  100% { opacity:1; transform:rotateY(0deg) scale(1); }
+}
+.card.flip { animation:flipIn .5s ease forwards; transform-style:preserve-3d; }
+@keyframes scatter {
+  0%   { opacity:1; transform:translate(0,0) rotate(0deg); }
+  100% { opacity:0; transform:translate(var(--dx),var(--dy)) rotate(var(--dr)); }
+}
+.card.scatter { animation:scatter .4s ease forwards; }
 .progress-bar { position:fixed; bottom:0; left:0; height:3px; background:#7c3aed; transition:width 1s linear; z-index:200; }
 .toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%) translateY(60px); background:#4c1d95; color:#ede9fe; padding:8px 20px; border-radius:20px; font-size:.82rem; font-weight:700; border:1px solid #7c3aed; transition:transform .3s; z-index:300; white-space:nowrap; }
 .toast.show { transform:translateX(-50%) translateY(0); }
@@ -71,6 +83,7 @@ header { display:flex; align-items:center; justify-content:space-between; paddin
     <button class="btn btn-primary" id="btnShuffle" style="display:none">지금 셔플</button>
     <button class="btn btn-secondary" id="btnToggleTimer" style="display:none">타이머 정지</button>
     <button class="btn btn-page" id="btnNextPage" style="display:none">▶ 다음 페이지</button>
+    <button class="btn btn-music" id="btnMusic" style="display:none">🔇 BGM 켜기</button>
     <button class="btn btn-share" id="btnShare" style="display:none">🔗 링크 공유</button>
   </div>
 </header>
@@ -283,6 +296,7 @@ function showWall() {
   document.getElementById("btnShuffle").style.display = "inline-block";
   document.getElementById("btnToggleTimer").style.display = "inline-block";
   document.getElementById("btnNextPage").style.display = "inline-block";
+  document.getElementById("btnMusic").style.display = "inline-block";
   document.getElementById("btnShare").style.display = "inline-block";
 }
 
